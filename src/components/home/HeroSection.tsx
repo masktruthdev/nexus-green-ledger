@@ -3,13 +3,23 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoNexus from "@/assets/logo-nexus.jpeg";
+import heroBackground from "@/assets/background-hero.jpeg";
 
 export const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-transparent" />
-      <div className="absolute inset-0 grid-bg opacity-30" />
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        <img
+          src={heroBackground}
+          alt="Nexus Protocol Background"
+          className="w-full h-full object-cover opacity-40"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/50 to-background" />
+      </div>
+      
+      {/* Grid Overlay */}
+      <div className="absolute inset-0 grid-bg opacity-20" />
       
       {/* Radial Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px] animate-pulse-glow" />
