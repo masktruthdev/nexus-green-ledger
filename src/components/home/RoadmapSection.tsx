@@ -1,6 +1,7 @@
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { SectionHeader } from "@/components/common/SectionHeader";
+import { GlassCard } from "@/components/common/GlassCard";
+import roadmapImage from "@/assets/nexus-roadmap.jpeg";
 
 const roadmapPhases = [
   {
@@ -49,8 +50,7 @@ const roadmapPhases = [
     quarter: "Year 2",
     items: [
       "Carbon marketplace",
-      "Enterprise partnerships",
-      "(TESLA, NVIDIA)",
+      "Enterprise partnerships (TESLA, NVIDIA)",
       "Governance system",
       "CEX listing",
     ],
@@ -71,9 +71,6 @@ const roadmapPhases = [
 ];
 
 export const RoadmapSection = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollXProgress } = useScroll({ container: containerRef });
-
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background */}
@@ -86,122 +83,110 @@ export const RoadmapSection = () => {
           subtitle="Our strategic path to building the world's leading green blockchain ecosystem."
         />
 
-        {/* Horizontal Scroll Container */}
-        <div className="mt-16 relative">
-          {/* Progress Bar */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-border/30 rounded-full overflow-hidden">
+        {/* Roadmap Visual Image */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="mt-12"
+        >
+          <GlassCard className="p-4 md:p-6 overflow-hidden" glow>
+            <div className="relative">
+              <img
+                src={roadmapImage}
+                alt="Nexus Protocol Roadmap"
+                className="w-full rounded-xl"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-background/30 via-transparent to-background/30 rounded-xl" />
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* Timeline Cards */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {roadmapPhases.map((phase, index) => (
             <motion.div
-              className="h-full bg-primary glow-green-sm"
-              style={{ scaleX: scrollXProgress, transformOrigin: "left" }}
-            />
-          </div>
-
-          <div
-            ref={containerRef}
-            className="mt-8 overflow-x-auto pb-8 scrollbar-hide"
-            style={{ scrollSnapType: "x mandatory" }}
-          >
-            <div className="flex gap-6 px-4" style={{ width: "max-content" }}>
-              {roadmapPhases.map((phase, index) => (
-                <motion.div
-                  key={phase.phase}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className="relative flex-shrink-0 w-80"
-                  style={{ scrollSnapAlign: "start" }}
-                >
-                  {/* Timeline Node */}
-                  <div className="absolute -top-11 left-0">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 ${
-                        phase.status === "completed"
-                          ? "bg-primary border-primary glow-green"
-                          : phase.status === "active"
-                          ? "bg-primary/50 border-primary animate-pulse-glow"
-                          : "bg-transparent border-muted-foreground/50"
-                      }`}
-                    />
-                  </div>
-
-                  {/* Card */}
-                  <div
-                    className={`glass-panel rounded-2xl p-6 h-full transition-all duration-500 ${
-                      phase.status === "active"
-                        ? "glow-green border-primary/50"
-                        : phase.status === "completed"
-                        ? "border-primary/30"
-                        : "border-border/30"
+              key={phase.phase}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+            >
+              <GlassCard 
+                className={`p-5 h-full ${
+                  phase.status === "active" ? "glow-green border-primary/50" : ""
+                }`}
+                animate={false}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <span
+                    className={`font-display text-xs font-semibold uppercase tracking-wider ${
+                      phase.status === "completed"
+                        ? "text-primary"
+                        : phase.status === "active"
+                        ? "text-primary animate-pulse"
+                        : "text-muted-foreground"
                     }`}
                   >
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
+                    {phase.phase}
+                  </span>
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      phase.status === "completed"
+                        ? "bg-primary glow-green-sm"
+                        : phase.status === "active"
+                        ? "bg-primary/50 animate-pulse"
+                        : "bg-muted-foreground/30"
+                    }`}
+                  />
+                </div>
+
+                {/* Title */}
+                <h3 className="font-display font-bold text-lg mb-1">
+                  {phase.title}
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {phase.quarter}
+                </span>
+
+                {/* Items */}
+                <ul className="mt-3 space-y-1.5">
+                  {phase.items.slice(0, 4).map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-xs text-muted-foreground"
+                    >
                       <span
-                        className={`font-display text-sm font-semibold uppercase tracking-wider ${
+                        className={`mt-1 w-1 h-1 rounded-full flex-shrink-0 ${
                           phase.status === "completed"
-                            ? "text-primary"
-                            : phase.status === "active"
-                            ? "text-primary animate-pulse"
-                            : "text-muted-foreground"
+                            ? "bg-primary"
+                            : "bg-muted-foreground/50"
                         }`}
-                      >
-                        {phase.phase}
-                      </span>
-                      <span className="text-xs text-muted-foreground glass-panel px-3 py-1 rounded-full">
-                        {phase.quarter}
-                      </span>
-                    </div>
+                      />
+                      <span className="line-clamp-1">{item}</span>
+                    </li>
+                  ))}
+                  {phase.items.length > 4 && (
+                    <li className="text-xs text-primary">
+                      +{phase.items.length - 4} more
+                    </li>
+                  )}
+                </ul>
 
-                    {/* Title */}
-                    <h3 className="font-display font-bold text-xl mb-4">
-                      {phase.title}
-                    </h3>
-
-                    {/* Items */}
-                    <ul className="space-y-2">
-                      {phase.items.map((item, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2 text-sm text-muted-foreground"
-                        >
-                          <span
-                            className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                              phase.status === "completed"
-                                ? "bg-primary"
-                                : "bg-muted-foreground/50"
-                            }`}
-                          />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Status Badge */}
-                    {phase.status === "active" && (
-                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
-                        <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                        <span className="text-xs font-display font-semibold text-primary uppercase tracking-wider">
-                          In Progress
-                        </span>
-                      </div>
-                    )}
+                {/* Status Badge */}
+                {phase.status === "active" && (
+                  <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                    <span className="text-[10px] font-display font-semibold text-primary uppercase tracking-wider">
+                      In Progress
+                    </span>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Scroll Hint */}
-        <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mt-4">
-          <span>Scroll to explore</span>
-          <motion.span
-            animate={{ x: [0, 5, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            →
-          </motion.span>
+                )}
+              </GlassCard>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

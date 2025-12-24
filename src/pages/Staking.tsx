@@ -11,6 +11,7 @@ import { Coins, TrendingUp, Wallet, Clock, Lock, Gift } from "lucide-react";
 import { toast } from "sonner";
 
 import treeNFT from "@/assets/TREE-NFT.png";
+import stakingVisual from "@/assets/nexus-staking.jpeg";
 
 // Mock data - in production this would come from smart contract
 const stakingData = {
@@ -67,15 +68,37 @@ const Staking = () => {
       
       <main className="pt-32 pb-20">
         <div className="container mx-auto px-4">
-          {/* Header */}
-          <SectionHeader
-            label="Staking Dashboard"
-            title="Stake & Earn NXP"
-            subtitle="Stake your NFTs to earn continuous NXP token rewards from the mining pool."
-          />
+          {/* Header with Visual */}
+          <div className="relative mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-2xl overflow-hidden"
+            >
+              <img
+                src={stakingVisual}
+                alt="Nexus Staking"
+                className="w-full h-64 md:h-80 object-cover opacity-60"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <span className="inline-block px-4 py-1.5 glass-panel rounded-full text-xs font-display font-semibold tracking-widest uppercase text-primary mb-4">
+                    Staking Dashboard
+                  </span>
+                  <h1 className="font-display font-bold text-3xl md:text-5xl tracking-tight">
+                    <span className="gradient-text">Stake & Earn NXP</span>
+                  </h1>
+                  <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
+                    Stake your NFTs to earn continuous NXP token rewards from the mining pool.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
 
           {/* Stats Overview */}
-          <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { icon: Wallet, label: "Active NFTs", value: stakingData.activeNFTs, color: "primary" },
               { icon: TrendingUp, label: "Daily Reward", value: stakingData.dailyReward, color: "primary" },
