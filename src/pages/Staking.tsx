@@ -75,14 +75,17 @@ const Staking = () => {
               animate={{ opacity: 1, y: 0 }}
               className="relative rounded-2xl overflow-hidden"
             >
-              <img
-                src={stakingVisual}
-                alt="Nexus Staking"
-                className="w-full h-64 md:h-80 object-cover opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+              <div className="relative w-full aspect-[16/9] md:aspect-[21/9]">
+                <img
+                  src={stakingVisual}
+                  alt="Nexus Staking"
+                  className="w-full h-full object-contain md:object-cover opacity-70"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50" />
+              </div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
+                <div className="text-center px-4">
                   <span className="inline-block px-4 py-1.5 glass-panel rounded-full text-xs font-display font-semibold tracking-widest uppercase text-primary mb-4">
                     Staking Dashboard
                   </span>
