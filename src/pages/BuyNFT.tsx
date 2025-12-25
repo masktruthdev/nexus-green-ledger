@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check, Gift } from "lucide-react";
 import { toast } from "sonner";
+import { useNFTSale } from "@/hooks/useNFTSale";
+import { useWallet } from "@/hooks/useWallet";
+import { NFT_PRICES_USD } from "@/lib/web3/config";
 
 import treeNFT from "@/assets/TREE-NFT.png";
 import diamondNFT from "@/assets/DIAMOND-NFT.png";
@@ -22,7 +25,8 @@ const nftCollection = [
     rarity: "Common",
     multiplier: "1x",
     supply: "2,070,000",
-    price: "0.1 ETH",
+    price: `$${NFT_PRICES_USD.TREE}`,
+    type: "TREE" as const,
   },
   {
     name: "Diamond NFT",
@@ -30,7 +34,8 @@ const nftCollection = [
     rarity: "Rare",
     multiplier: "5x",
     supply: "20,000",
-    price: "0.5 ETH",
+    price: `$${NFT_PRICES_USD.DIAMOND}`,
+    type: "DIAMOND" as const,
   },
   {
     name: "Carbon NFT",
@@ -38,25 +43,38 @@ const nftCollection = [
     rarity: "Legendary",
     multiplier: "10x",
     supply: "10,000",
-    price: "1 ETH",
+    price: `$${NFT_PRICES_USD.CARBON}`,
+    type: "CARBON" as const,
   },
 ];
 
 const BuyNFT = () => {
   const [referralCode, setReferralCode] = useState("");
   const [referralApplied, setReferralApplied] = useState(false);
+  
+  const { buyNFT, isPending } = useNFTSale();
+  const { isConnected, connectWallet } = useWallet();
 
   // Smart Contract Function: buyNFT(nftType, referralCode)
-  const handleBuyNFT = (nftType: string) => {
-    // TODO: Bind to smart contract ABI
-    console.log(`buyNFT("${nftType}", "${referralCode}") - Ready to bind ABI`);
-    toast.success(`Initiating purchase for ${nftType}...`);
+  const handleBuyNFT = async (nftType: "TREE" | "DIAMOND" | "CARBON") => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      connectWallet();
+      return;
+    }
+    
+    await buyNFT(nftType, referralApplied ? referralCode : undefined);
   };
 
   const handleApplyReferral = () => {
     if (referralCode.trim()) {
-      setReferralApplied(true);
-      toast.success("Referral code applied!");
+      // Validate if it's a valid address format
+      if (referralCode.startsWith("0x") && referralCode.length === 42) {
+        setReferralApplied(true);
+        toast.success("Referral code applied!");
+      } else {
+        toast.error("Please enter a valid wallet address");
+      }
     }
   };
 
@@ -89,18 +107,18 @@ const BuyNFT = () => {
                 <div>
                   <h3 className="font-display font-semibold">Referral Bonus</h3>
                   <p className="text-sm text-muted-foreground">
-                    Enter a referral code to get 5% bonus
+                    Enter a referral wallet address to get 5% bonus
                   </p>
                 </div>
               </div>
               
               <div className="flex gap-3">
                 <Input
-                  placeholder="Enter referral code"
+                  placeholder="Enter referral wallet address (0x...)"
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value)}
                   disabled={referralApplied}
-                  className="flex-1"
+                  className="flex-1 font-mono text-sm"
                 />
                 <Button
                   variant={referralApplied ? "outline" : "default"}
@@ -132,8 +150,9 @@ const BuyNFT = () => {
               >
                 <NFTCard
                   {...nft}
-                  onBuy={() => handleBuyNFT(nft.name)}
+                  onBuy={() => handleBuyNFT(nft.type)}
                   floating={false}
+                  disabled={isPending}
                 />
               </motion.div>
             ))}

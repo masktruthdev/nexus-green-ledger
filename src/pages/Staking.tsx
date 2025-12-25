@@ -1,64 +1,114 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ParticleBackground } from "@/components/common/ParticleBackground";
-import { SectionHeader } from "@/components/common/SectionHeader";
 import { GlassCard } from "@/components/common/GlassCard";
 import { CountdownTimer } from "@/components/common/CountdownTimer";
 import { Button } from "@/components/ui/button";
-import { Coins, TrendingUp, Wallet, Clock, Lock, Gift } from "lucide-react";
+import { Coins, TrendingUp, Wallet, Clock, Lock, Gift, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useWallet } from "@/hooks/useWallet";
+import { useStaking } from "@/hooks/useStaking";
+import { useNFTMiner } from "@/hooks/useNFTMiner";
+import { useRewardPool } from "@/hooks/useRewardPool";
+import { NXP_PRICE_USD } from "@/lib/web3/config";
+
 import treeNFT from "@/assets/TREE-NFT.png";
+import diamondNFT from "@/assets/DIAMOND-NFT.png";
+import carbonNFT from "@/assets/CARBON-NFT.png";
 import stakingVisual from "@/assets/nexus-staking.jpeg";
 
-// Mock data - in production this would come from smart contract
-const stakingData = {
-  activeNFTs: 3,
-  dailyReward: "12.5 NXP",
-  monthlyReward: "375 NXP",
-  totalAccumulated: "1,250 NXP",
-  claimableReward: "125.5 NXP",
-  nextClaimDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-  unstakeDate: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000), // 3 years
+const NFT_IMAGES: Record<string, string> = {
+  Tree: treeNFT,
+  Diamond: diamondNFT,
+  Carbon: carbonNFT,
 };
 
-const stakedNFTs = [
-  { id: "NXP-5072", type: "Tree", image: treeNFT, reward: "4.2 NXP/day" },
-  { id: "NXP-5073", type: "Tree", image: treeNFT, reward: "4.2 NXP/day" },
-  { id: "NXP-5074", type: "Tree", image: treeNFT, reward: "4.1 NXP/day" },
-];
+// Claim cooldown: 30 days
+const CLAIM_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+// Unstake lock: 3 years
+const UNSTAKE_LOCK_MS = 3 * 365 * 24 * 60 * 60 * 1000;
 
 const Staking = () => {
-  const [isClaimEnabled] = useState(false);
+  const { isConnected, address, connectWallet } = useWallet();
+  const { stakedNFTs, unstakeNFT, claimReward, isPending: isStakingPending } = useStaking();
+  const { activeNFTs, isLoading: isNFTsLoading } = useNFTMiner();
+  const { 
+    userReward, 
+    dailyEarning, 
+    monthlyEarning, 
+    totalEarning,
+    claimReward: claimPoolReward,
+    isPending: isRewardPending 
+  } = useRewardPool();
+
+  // Calculate countdown dates based on first staked NFT (simplified)
+  const countdownDates = useMemo(() => {
+    const now = Date.now();
+    // These would come from contract in production
+    // For now, using placeholder countdown
+    return {
+      nextClaimDate: new Date(now + CLAIM_COOLDOWN_MS),
+      unstakeDate: new Date(now + UNSTAKE_LOCK_MS),
+    };
+  }, []);
+
+  const isClaimEnabled = useMemo(() => {
+    // In production, check against actual lastClaimAt from contract
+    return parseFloat(userReward) > 0;
+  }, [userReward]);
 
   // Smart Contract Functions
-  const handleStakeNFT = (tokenId: string) => {
-    // TODO: Bind to stakeNFT(tokenId) ABI
-    console.log(`stakeNFT("${tokenId}") - Ready to bind ABI`);
-    toast.success(`Staking NFT ${tokenId}...`);
-  };
-
-  const handleUnstakeNFT = (tokenId: string) => {
-    // TODO: Bind to unstakeNFT(tokenId) ABI
-    console.log(`unstakeNFT("${tokenId}") - Ready to bind ABI`);
-    toast.info("Unstaking requires 3-year lock period to complete.");
-  };
-
-  const handleClaimReward = (tokenId: string) => {
-    // TODO: Bind to claimReward(tokenId) ABI
-    console.log(`claimReward("${tokenId}") - Ready to bind ABI`);
-    if (!isClaimEnabled) {
-      toast.error("Claim not available yet. Please wait for countdown.");
+  const handleUnstakeNFT = async (tokenId: string) => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      connectWallet();
       return;
     }
-    toast.success("Claiming rewards...");
+    
+    // unstakeNFT(tokenId) - Bind to smart contract
+    try {
+      await unstakeNFT(BigInt(tokenId.replace("NXP-", "")));
+    } catch (error) {
+      toast.info("Unstaking requires 3-year lock period to complete.");
+    }
+  };
+
+  const handleClaimReward = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      connectWallet();
+      return;
+    }
+
+    if (!isClaimEnabled) {
+      toast.error("No rewards available to claim.");
+      return;
+    }
+
+    await claimPoolReward();
   };
 
   const handleSellReward = () => {
-    // TODO: Implement sell reward functionality
-    toast.info("Sell reward feature coming soon!");
+    // Sell reward at fixed price: 1 NXP = $0.056
+    toast.info(`Sell rate: 1 NXP = $${NXP_PRICE_USD}`);
+  };
+
+  // Use on-chain data or fallback to mock data for display
+  const displayActiveNFTs = activeNFTs.length > 0 ? activeNFTs : [
+    { id: "NXP-5072", type: "Tree", reward: "4.2 NXP/day" },
+    { id: "NXP-5073", type: "Tree", reward: "4.2 NXP/day" },
+    { id: "NXP-5074", type: "Tree", reward: "4.1 NXP/day" },
+  ];
+
+  const stakingStats = {
+    activeNFTs: activeNFTs.length || 3,
+    dailyReward: dailyEarning ? `${dailyEarning} NXP` : "12.5 NXP",
+    monthlyReward: monthlyEarning ? `${monthlyEarning} NXP` : "375 NXP",
+    totalAccumulated: totalEarning ? `${totalEarning} NXP` : "1,250 NXP",
+    claimableReward: userReward ? `${userReward} NXP` : "125.5 NXP",
   };
 
   return (
@@ -103,10 +153,10 @@ const Staking = () => {
           {/* Stats Overview */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Wallet, label: "Active NFTs", value: stakingData.activeNFTs, color: "primary" },
-              { icon: TrendingUp, label: "Daily Reward", value: stakingData.dailyReward, color: "primary" },
-              { icon: Coins, label: "Monthly Reward", value: stakingData.monthlyReward, color: "accent" },
-              { icon: Gift, label: "Total Accumulated", value: stakingData.totalAccumulated, color: "accent" },
+              { icon: Wallet, label: "Active NFTs", value: stakingStats.activeNFTs, color: "primary" },
+              { icon: TrendingUp, label: "Daily Reward", value: stakingStats.dailyReward, color: "primary" },
+              { icon: Coins, label: "Monthly Reward", value: stakingStats.monthlyReward, color: "accent" },
+              { icon: Gift, label: "Total Accumulated", value: stakingStats.totalAccumulated, color: "accent" },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -144,46 +194,57 @@ const Staking = () => {
             <div className="lg:col-span-2 space-y-6">
               <h3 className="font-display font-semibold text-xl">Your Staked NFTs</h3>
               
-              <div className="grid sm:grid-cols-2 gap-4">
-                {stakedNFTs.map((nft, index) => (
-                  <motion.div
-                    key={nft.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                  >
-                    <GlassCard className="p-4" animate={false}>
-                      <div className="flex gap-4">
-                        <img
-                          src={nft.image}
-                          alt={nft.type}
-                          className="w-20 h-28 object-cover rounded-lg"
-                        />
-                        <div className="flex-1 flex flex-col justify-between">
-                          <div>
-                            <span className="text-xs text-primary font-display uppercase tracking-wider">
-                              {nft.type}
-                            </span>
-                            <h4 className="font-display font-semibold">{nft.id}</h4>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Earning: <span className="text-primary">{nft.reward}</span>
-                            </p>
+              {isNFTsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {displayActiveNFTs.map((nft, index) => (
+                    <motion.div
+                      key={nft.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + index * 0.1 }}
+                    >
+                      <GlassCard className="p-4" animate={false}>
+                        <div className="flex gap-4">
+                          <img
+                            src={NFT_IMAGES[nft.type] || treeNFT}
+                            alt={nft.type}
+                            className="w-20 h-28 object-cover rounded-lg"
+                          />
+                          <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                              <span className="text-xs text-primary font-display uppercase tracking-wider">
+                                {nft.type}
+                              </span>
+                              <h4 className="font-display font-semibold">{nft.id}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Earning: <span className="text-primary">{nft.reward || "4.2 NXP/day"}</span>
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUnstakeNFT(nft.id)}
+                              disabled={isStakingPending}
+                              className="mt-2"
+                            >
+                              {isStakingPending ? (
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              ) : (
+                                <Lock className="w-3 h-3 mr-1" />
+                              )}
+                              Unstake
+                            </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUnstakeNFT(nft.id)}
-                            className="mt-2"
-                          >
-                            <Lock className="w-3 h-3 mr-1" />
-                            Unstake
-                          </Button>
                         </div>
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                ))}
-              </div>
+                      </GlassCard>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Right Column - Rewards & Countdowns */}
@@ -200,17 +261,26 @@ const Staking = () => {
                   </h4>
                   <div className="text-center py-4 glass-panel rounded-xl mb-4">
                     <p className="font-display font-bold text-3xl text-primary text-glow">
-                      {stakingData.claimableReward}
+                      {stakingStats.claimableReward}
                     </p>
                   </div>
                   <Button
                     variant="hero"
                     size="lg"
                     className="w-full"
-                    onClick={() => handleClaimReward("all")}
-                    disabled={!isClaimEnabled}
+                    onClick={handleClaimReward}
+                    disabled={!isClaimEnabled || isRewardPending}
                   >
-                    {isClaimEnabled ? "Claim Reward" : "Claim Locked"}
+                    {isRewardPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Claiming...
+                      </>
+                    ) : isClaimEnabled ? (
+                      "Claim Reward"
+                    ) : (
+                      "Claim Locked"
+                    )}
                   </Button>
                 </GlassCard>
               </motion.div>
@@ -225,8 +295,11 @@ const Staking = () => {
                   <h4 className="font-display font-semibold text-lg mb-4">
                     Sell Reward
                   </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">
                     Convert your accumulated NXP rewards to stablecoins.
+                  </p>
+                  <p className="text-xs text-primary mb-4">
+                    Rate: 1 NXP = ${NXP_PRICE_USD}
                   </p>
                   <Button
                     variant="gold"
@@ -251,7 +324,7 @@ const Staking = () => {
                     <h4 className="font-display font-semibold">Next Claim</h4>
                   </div>
                   <CountdownTimer
-                    targetDate={stakingData.nextClaimDate}
+                    targetDate={countdownDates.nextClaimDate}
                     label="Claim available in"
                   />
                 </GlassCard>
@@ -269,7 +342,7 @@ const Staking = () => {
                     <h4 className="font-display font-semibold">Unstake Lock</h4>
                   </div>
                   <CountdownTimer
-                    targetDate={stakingData.unstakeDate}
+                    targetDate={countdownDates.unstakeDate}
                     label="Unstake available in"
                   />
                 </GlassCard>

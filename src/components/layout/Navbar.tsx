@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Wallet } from "lucide-react";
+import { Menu, X, Wallet, LogOut, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/hooks/useWallet";
 import logoNexus from "@/assets/logo-nexus.jpeg";
 
 const navLinks = [
@@ -17,6 +18,16 @@ export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
+  const { 
+    address, 
+    isConnected, 
+    isCorrectChain, 
+    isPending, 
+    connectWallet, 
+    disconnectWallet,
+    switchToBSC 
+  } = useWallet();
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -25,10 +36,57 @@ export const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Smart Contract Function: connectWallet()
-  const handleConnectWallet = () => {
-    // TODO: Bind to Web3 wallet connection (MetaMask, WalletConnect, etc.)
-    console.log("connectWallet() - Ready to bind ABI");
+  // Format address for display
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const handleWalletAction = () => {
+    if (isConnected) {
+      if (!isCorrectChain) {
+        switchToBSC();
+      } else {
+        disconnectWallet();
+      }
+    } else {
+      connectWallet();
+    }
+  };
+
+  const getButtonContent = () => {
+    if (isPending) {
+      return (
+        <>
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          Connecting...
+        </>
+      );
+    }
+    
+    if (isConnected && !isCorrectChain) {
+      return (
+        <>
+          <AlertTriangle className="w-4 h-4" />
+          Switch to BSC
+        </>
+      );
+    }
+    
+    if (isConnected && address) {
+      return (
+        <>
+          <LogOut className="w-4 h-4" />
+          {formatAddress(address)}
+        </>
+      );
+    }
+    
+    return (
+      <>
+        <Wallet className="w-4 h-4" />
+        Connect Wallet
+      </>
+    );
   };
 
   return (
@@ -88,13 +146,13 @@ export const Navbar = () => {
           {/* Connect Wallet Button */}
           <div className="hidden lg:block">
             <Button
-              variant="hero"
+              variant={isConnected && !isCorrectChain ? "destructive" : "hero"}
               size="lg"
-              onClick={handleConnectWallet}
+              onClick={handleWalletAction}
+              disabled={isPending}
               className="gap-2"
             >
-              <Wallet className="w-4 h-4" />
-              Connect Wallet
+              {getButtonContent()}
             </Button>
           </div>
 
@@ -151,13 +209,13 @@ export const Navbar = () => {
                   className="pt-4"
                 >
                   <Button
-                    variant="hero"
+                    variant={isConnected && !isCorrectChain ? "destructive" : "hero"}
                     size="xl"
-                    onClick={handleConnectWallet}
+                    onClick={handleWalletAction}
+                    disabled={isPending}
                     className="w-full gap-2"
                   >
-                    <Wallet className="w-5 h-5" />
-                    Connect Wallet
+                    {getButtonContent()}
                   </Button>
                 </motion.div>
               </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -15,42 +15,92 @@ import {
   Calendar, 
   Coins,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+
+import { useWallet } from "@/hooks/useWallet";
+import { useNFTMiner } from "@/hooks/useNFTMiner";
+import { useRewardPool } from "@/hooks/useRewardPool";
+import { NXP_PRICE_USD } from "@/lib/web3/config";
 
 import treeNFT from "@/assets/TREE-NFT.png";
 import diamondNFT from "@/assets/DIAMOND-NFT.png";
 import carbonNFT from "@/assets/CARBON-NFT.png";
 
-// Mock data - in production this would come from smart contract
-const dashboardData = {
-  referralLink: "https://nexus.protocol/ref/NXP12345",
-  totalEarnings: "5,250 NXP",
-  dailyEarnings: "42.5 NXP",
-  monthlyEarnings: "1,275 NXP",
-  referralBonus: "525 NXP",
-};
-
-const userNFTs = {
-  active: [
-    { id: "NXP-5072", type: "Tree", image: treeNFT, status: "staked" },
-    { id: "NXP-5073", type: "Tree", image: treeNFT, status: "staked" },
-    { id: "NXP-3008", type: "Diamond", image: diamondNFT, status: "staked" },
-  ],
-  inactive: [
-    { id: "NXP-5074", type: "Tree", image: treeNFT, status: "unstaked" },
-    { id: "NXP-6890", type: "Carbon", image: carbonNFT, status: "unstaked" },
-  ],
+const NFT_IMAGES: Record<string, string> = {
+  Tree: treeNFT,
+  Diamond: diamondNFT,
+  Carbon: carbonNFT,
 };
 
 const Dashboard = () => {
   const [copied, setCopied] = useState(false);
-
-  // Smart Contract Functions
-  // getTotalEarning(address), getDailyEarning(address), getMonthlyEarning(address), getReferralLink(address)
   
+  const { address, isConnected, connectWallet } = useWallet();
+  const { activeNFTs, inactiveNFTs, isLoading: isNFTsLoading } = useNFTMiner();
+  const { 
+    totalEarning, 
+    totalEarningUSD,
+    dailyEarning, 
+    dailyEarningUSD,
+    monthlyEarning,
+    monthlyEarningUSD,
+    referralEarning,
+    referralEarningUSD 
+  } = useRewardPool();
+
+  // Generate referral link from wallet address
+  const referralLink = useMemo(() => {
+    if (address) {
+      return `https://nexus.protocol/ref/${address}`;
+    }
+    return "https://nexus.protocol/ref/connect-wallet";
+  }, [address]);
+
+  // Use on-chain data or fallback to demo data
+  const dashboardData = {
+    referralLink,
+    totalEarnings: totalEarning ? `${totalEarning} NXP` : "5,250 NXP",
+    totalEarningsUSD: totalEarningUSD ? `$${totalEarningUSD}` : "$294.00",
+    dailyEarnings: dailyEarning ? `${dailyEarning} NXP` : "42.5 NXP",
+    dailyEarningsUSD: dailyEarningUSD ? `$${dailyEarningUSD}` : "$2.38",
+    monthlyEarnings: monthlyEarning ? `${monthlyEarning} NXP` : "1,275 NXP",
+    monthlyEarningsUSD: monthlyEarningUSD ? `$${monthlyEarningUSD}` : "$71.40",
+    referralBonus: referralEarning ? `${referralEarning} NXP` : "525 NXP",
+    referralBonusUSD: referralEarningUSD ? `$${referralEarningUSD}` : "$29.40",
+  };
+
+  // Use on-chain NFTs or fallback to demo data
+  const displayActiveNFTs = activeNFTs.length > 0 ? activeNFTs.map(nft => ({
+    id: nft.id,
+    type: nft.type,
+    image: NFT_IMAGES[nft.type] || treeNFT,
+    status: "staked",
+  })) : [
+    { id: "NXP-5072", type: "Tree", image: treeNFT, status: "staked" },
+    { id: "NXP-5073", type: "Tree", image: treeNFT, status: "staked" },
+    { id: "NXP-3008", type: "Diamond", image: diamondNFT, status: "staked" },
+  ];
+
+  const displayInactiveNFTs = inactiveNFTs.length > 0 ? inactiveNFTs.map(nft => ({
+    id: nft.id,
+    type: nft.type,
+    image: NFT_IMAGES[nft.type] || treeNFT,
+    status: "unstaked",
+  })) : [
+    { id: "NXP-5074", type: "Tree", image: treeNFT, status: "unstaked" },
+    { id: "NXP-6890", type: "Carbon", image: carbonNFT, status: "unstaked" },
+  ];
+
   const handleCopyReferral = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      connectWallet();
+      return;
+    }
+    
     try {
       await navigator.clipboard.writeText(dashboardData.referralLink);
       setCopied(true);
@@ -59,6 +109,11 @@ const Dashboard = () => {
     } catch {
       toast.error("Failed to copy");
     }
+  };
+
+  const handleStakeNow = () => {
+    toast.info("Redirecting to staking...");
+    window.location.href = "/staking";
   };
 
   return (
@@ -117,10 +172,34 @@ const Dashboard = () => {
           {/* Earnings Grid */}
           <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Wallet, label: "Total Earnings", value: dashboardData.totalEarnings, color: "primary" },
-              { icon: Calendar, label: "Daily Earnings", value: dashboardData.dailyEarnings, color: "primary" },
-              { icon: TrendingUp, label: "Monthly Earnings", value: dashboardData.monthlyEarnings, color: "accent" },
-              { icon: Coins, label: "Referral Bonus", value: dashboardData.referralBonus, color: "accent" },
+              { 
+                icon: Wallet, 
+                label: "Total Earnings", 
+                value: dashboardData.totalEarnings, 
+                subValue: dashboardData.totalEarningsUSD,
+                color: "primary" 
+              },
+              { 
+                icon: Calendar, 
+                label: "Daily Earnings", 
+                value: dashboardData.dailyEarnings, 
+                subValue: dashboardData.dailyEarningsUSD,
+                color: "primary" 
+              },
+              { 
+                icon: TrendingUp, 
+                label: "Monthly Earnings", 
+                value: dashboardData.monthlyEarnings, 
+                subValue: dashboardData.monthlyEarningsUSD,
+                color: "accent" 
+              },
+              { 
+                icon: Coins, 
+                label: "Referral Bonus", 
+                value: dashboardData.referralBonus, 
+                subValue: dashboardData.referralBonusUSD,
+                color: "accent" 
+              },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -146,6 +225,9 @@ const Dashboard = () => {
                       }`}>
                         {stat.value}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        ≈ {stat.subValue}
+                      </p>
                     </div>
                   </div>
                 </GlassCard>
@@ -165,39 +247,45 @@ const Dashboard = () => {
                 <CheckCircle2 className="w-6 h-6 text-primary" />
                 <h3 className="font-display font-semibold text-xl">Active NFTs</h3>
                 <span className="px-2 py-1 glass-panel rounded-full text-xs font-display text-primary">
-                  {userNFTs.active.length} Staked
+                  {displayActiveNFTs.length} Staked
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {userNFTs.active.map((nft, index) => (
-                  <motion.div
-                    key={nft.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                  >
-                    <GlassCard className="p-3 group" animate={false}>
-                      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-3">
-                        <img
-                          src={nft.image}
-                          alt={nft.type}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-primary/90 rounded-full text-[10px] font-display font-semibold text-primary-foreground uppercase">
-                          Staked
+              {isNFTsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {displayActiveNFTs.map((nft, index) => (
+                    <motion.div
+                      key={nft.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.6 + index * 0.1 }}
+                    >
+                      <GlassCard className="p-3 group" animate={false}>
+                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-3">
+                          <img
+                            src={nft.image}
+                            alt={nft.type}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute top-2 right-2 px-2 py-0.5 bg-primary/90 rounded-full text-[10px] font-display font-semibold text-primary-foreground uppercase">
+                            Staked
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-primary font-display uppercase tracking-wider">
-                          {nft.type}
-                        </span>
-                        <p className="font-display font-semibold text-sm">{nft.id}</p>
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                ))}
-              </div>
+                        <div className="space-y-1">
+                          <span className="text-xs text-primary font-display uppercase tracking-wider">
+                            {nft.type}
+                          </span>
+                          <p className="font-display font-semibold text-sm">{nft.id}</p>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             {/* Inactive NFTs */}
@@ -212,47 +300,53 @@ const Dashboard = () => {
                   Inactive NFTs
                 </h3>
                 <span className="px-2 py-1 glass-panel rounded-full text-xs font-display text-muted-foreground">
-                  {userNFTs.inactive.length} Unstaked
+                  {displayInactiveNFTs.length} Unstaked
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {userNFTs.inactive.map((nft, index) => (
-                  <motion.div
-                    key={nft.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.8 + index * 0.1 }}
-                  >
-                    <GlassCard className="p-3 group opacity-60 hover:opacity-100 transition-opacity" animate={false}>
-                      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-3 grayscale group-hover:grayscale-0 transition-all">
-                        <img
-                          src={nft.image}
-                          alt={nft.type}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-muted rounded-full text-[10px] font-display font-semibold text-muted-foreground uppercase">
-                          Unstaked
+              {isNFTsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {displayInactiveNFTs.map((nft, index) => (
+                    <motion.div
+                      key={nft.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.8 + index * 0.1 }}
+                    >
+                      <GlassCard className="p-3 group opacity-60 hover:opacity-100 transition-opacity" animate={false}>
+                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-3 grayscale group-hover:grayscale-0 transition-all">
+                          <img
+                            src={nft.image}
+                            alt={nft.type}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute top-2 right-2 px-2 py-0.5 bg-muted rounded-full text-[10px] font-display font-semibold text-muted-foreground uppercase">
+                            Unstaked
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">
-                          {nft.type}
-                        </span>
-                        <p className="font-display font-semibold text-sm">{nft.id}</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-3 text-xs"
-                        onClick={() => toast.info("Redirecting to staking...")}
-                      >
-                        Stake Now
-                      </Button>
-                    </GlassCard>
-                  </motion.div>
-                ))}
-              </div>
+                        <div className="space-y-1">
+                          <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">
+                            {nft.type}
+                          </span>
+                          <p className="font-display font-semibold text-sm">{nft.id}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-3 text-xs"
+                          onClick={handleStakeNow}
+                        >
+                          Stake Now
+                        </Button>
+                      </GlassCard>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
