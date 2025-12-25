@@ -11,6 +11,7 @@ interface NFTCardProps {
   price?: string;
   onBuy?: () => void;
   floating?: boolean;
+  disabled?: boolean;
 }
 
 export const NFTCard = ({
@@ -22,6 +23,7 @@ export const NFTCard = ({
   price,
   onBuy,
   floating = true,
+  disabled = false,
 }: NFTCardProps) => {
   return (
     <motion.div
@@ -95,9 +97,14 @@ export const NFTCard = ({
             size="lg"
             className="w-full mt-4 gap-2"
             onClick={onBuy}
+            disabled={disabled}
           >
-            <Sparkles className="w-4 h-4" />
-            Buy NFT
+            {disabled ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {disabled ? "Processing..." : "Buy NFT"}
           </Button>
         )}
       </div>
